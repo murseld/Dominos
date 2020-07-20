@@ -6,25 +6,46 @@ services:
     build:
       context: .
       dockerfile: Dominos.Services.DbWrite/Dockerfile
+    restart: on-failure
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - HOSTNAMERABBIT=rabbitmq
     ports:
       - "5010:80"   
     depends_on:
       - rabbitmq
       - sqlserver
+    command: >
+      /bin/bash -c "
+        while ! nc -z rabbitmq 5672;
+        do
+          echo sleeping;
+          sleep 1;
+        done;
+        echo Connected!;
+      "
+    networks:
+      vpcbr:
+        ipv4_address: 10.5.0.3
+
+
 ###################################################################
   dominos.services.textwrite:
     image: ${DOCKER_REGISTRY-}dominosservicestextwrite
     build:
       context: .
       dockerfile: Dominos.Services.TextWrite/Dockerfile
+    restart: on-failure
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - HOSTNAMERABBIT=rabbitmq
     ports:
-      - "5020:80"  
+      - "5020:80" 
     depends_on:
       - rabbitmq
+    networks:
+      vpcbr:
+        ipv4_address: 10.5.0.4
 
 ###################################################################
   dominos.services.apigateway:
@@ -35,15 +56,18 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
     ports:
-      - "5000:80"   
+      - "5000:80" 
     depends_on:
       - rabbitmq
-
-###################################################################
+    networks:
+      vpcbr:
+        ipv4_address: 10.5.0.5
+    
+ ###################################################################
   rabbitmq:
-    image: "rabbitmq:3-management"
-    hostname: "my-rabbit"
-    container_name: myrabbit
+    image: rabbitmq:3.7.3-management
+    restart: always
+    container_name: rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -52,20 +76,30 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: 123456
-    healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:15672"]
-        interval: 30s
-        timeout: 10s
-        retries: 5
+    networks:
+      vpcbr:
+        ipv4_address: 10.5.0.7
+
 ###################################################################
   sqlserver:
     container_name: "sqlserver"
-    image: microsoft/mssql-server-linux:2017-CU8
+    image: microsoft/mssql-server-linux:2017-latest
+    hostname: 'sqlserver' 
     environment:
       - ACCEPT_EULA=Y
       - MSSQL_PID=Developer
       - SA_PASSWORD=<YourStrong!Passw0rd>
       - MSSQL_DB=DominosDb
+      - MSSQL_TCP_PORT=1433
     ports:
       - "1433:1433"
+    networks:
+      vpcbr:
+        ipv4_address: 10.5.0.6
 ###################################################################
+networks:
+  vpcbr:
+    driver: bridge
+    ipam:
+     config:
+       - subnet: 10.5.0.0/16

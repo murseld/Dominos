@@ -16,7 +16,7 @@ namespace Dominos.Core.Bus
 {
     public class BusSubscriber : IBusSubscriber
     {
-        private readonly ILogger _logger;
+        private readonly ILogger<IBusSubscriber> _logger;
         private readonly IBusClient _busClient;
         private readonly IServiceProvider _serviceProvider;
         private readonly string _defaultNamespace;
@@ -25,7 +25,7 @@ namespace Dominos.Core.Bus
 
         public BusSubscriber(IApplicationBuilder app)
         {
-            _logger = app.ApplicationServices.GetService<ILogger<BusSubscriber>>();
+            _logger = app.ApplicationServices.GetService<ILogger<IBusSubscriber>>();
             _serviceProvider = app.ApplicationServices.GetService<IServiceProvider>();
             _busClient = _serviceProvider.GetService<IBusClient>();
 
@@ -39,12 +39,12 @@ namespace Dominos.Core.Bus
             where TCommand : ICommand
         {
             _busClient.SubscribeAsync<TCommand, CorrelationContext>(async (command, correlationContext) =>
-            {
-                var commandHandler = _serviceProvider.GetService<ICommandHandler<TCommand>>();
+                {
+                    var commandHandler = _serviceProvider.GetService<ICommandHandler<TCommand>>();
 
-                return await TryHandleAsync(command, correlationContext,
-                    () => commandHandler.HandleAsync(command, correlationContext));
-            },
+                    return await TryHandleAsync(command, correlationContext,
+                        () => commandHandler.HandleAsync(command, correlationContext));
+                },
                 ctx => ctx.UseSubscribeConfiguration(cfg =>
                     cfg.FromDeclaredQueue(q => q.WithName(GetQueueName<TCommand>(_namespace)))));
 
@@ -63,8 +63,8 @@ namespace Dominos.Core.Bus
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine(e);
-                    throw;
+                    _logger.LogInformation(e.StackTrace);
+                    throw ;
                 }
 
                
@@ -91,7 +91,7 @@ namespace Dominos.Core.Bus
                 var messageType = message is IEvent ? "n event" : " command";
 
                 _logger.LogInformation($"[Handled a{messageType}] : '{messageName}' " +
-                                     $"Correlation id: '{correlationContext.CorrelationId}'. {retryMessage}");
+                                       $"Correlation id: '{correlationContext.CorrelationId}'. {retryMessage}");
                 await handle();
 
                 return new Ack();
