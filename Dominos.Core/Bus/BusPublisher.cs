@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Reflection;
 using System.Threading.Tasks;
 using Dominos.Core.Bus.RabbitMq;
 using Dominos.Core.Domain.Messages;
@@ -27,10 +28,18 @@ namespace Dominos.Core.Bus
             var commandName = command.GetType().Name;
             _logger.LogInformation($"[Sent a command] : '{commandName}' Correlation id: '{context.CorrelationId}'");
 
-            await _busClient.PublishAsync(command, ctx =>
-                ctx.UseMessageContext(context)
-                   .UsePublishConfiguration(p => 
-                       p.WithRoutingKey(GetRoutingKey(command))));
+            try
+            {
+                await _busClient.PublishAsync(command, ctx =>
+                    ctx.UseMessageContext(context)
+                        .UsePublishConfiguration(p =>
+                            p.WithRoutingKey(GetRoutingKey(command))));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"----Exception---- {e.Message }");
+                _logger.LogError($"----StackTrace---- {e.StackTrace }");
+            }
         }
 
         public async Task PublishAsync<TEvent>(TEvent _event, ICorrelationContext context) where TEvent : IEvent
@@ -38,10 +47,18 @@ namespace Dominos.Core.Bus
             var eventName = _event.GetType().Name;
             _logger.LogInformation($"[Published an event] : '{eventName}' Correlation id: '{context.CorrelationId}'");
 
-            await _busClient.PublishAsync(_event, ctx => 
-                ctx.UseMessageContext(context)
-                   .UsePublishConfiguration(p => 
-                       p.WithRoutingKey(GetRoutingKey(_event))));
+            try
+            {
+                await _busClient.PublishAsync(_event, ctx =>
+                    ctx.UseMessageContext(context)
+                        .UsePublishConfiguration(p =>
+                            p.WithRoutingKey(GetRoutingKey(_event))));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"----Exception---- {e.Message }");
+                _logger.LogError($"----StackTrace---- {e.StackTrace }");
+            }
         }
 
         private string GetRoutingKey<T>(T message)

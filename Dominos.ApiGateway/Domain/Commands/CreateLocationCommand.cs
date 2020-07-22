@@ -15,12 +15,12 @@ namespace Dominos.ApiGateway.Domain.Commands
 
         public CreateLocationCommand(double srcLong, double srcLat, double desLong, double desLat)
         {
-            commandId=Guid.NewGuid();
+            commandId = Guid.NewGuid();
             src_long = srcLong;
             src_lat = srcLat;
             des_long = desLong;
             des_lat = desLat;
-            CreateDate=DateTime.Now;
+            CreateDate = DateTime.Now;
         }
     }
 }

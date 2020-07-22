@@ -16,7 +16,7 @@ namespace Dominos.Core.Bus
 {
     public class BusSubscriber : IBusSubscriber
     {
-        private readonly ILogger<IBusSubscriber> _logger;
+        private readonly ILogger _logger;
         private readonly IBusClient _busClient;
         private readonly IServiceProvider _serviceProvider;
         private readonly string _defaultNamespace;
@@ -25,9 +25,9 @@ namespace Dominos.Core.Bus
 
         public BusSubscriber(IApplicationBuilder app)
         {
-            _logger = app.ApplicationServices.GetService<ILogger<IBusSubscriber>>();
             _serviceProvider = app.ApplicationServices.GetService<IServiceProvider>();
             _busClient = _serviceProvider.GetService<IBusClient>();
+            _logger = app.ApplicationServices.GetService<ILogger<BusSubscriber>>();
 
             var options = _serviceProvider.GetService<RabbitMqOptions>();
             _defaultNamespace = options.Namespace;
@@ -35,15 +35,23 @@ namespace Dominos.Core.Bus
             _retryInterval = options.RetryInterval > 0 ? options.RetryInterval : 2;
         }
 
-        public IBusSubscriber SubscribeCommand<TCommand>(string _namespace = null)
-            where TCommand : ICommand
+        public IBusSubscriber SubscribeCommand<TCommand>(string _namespace = null) where TCommand : ICommand
         {
             _busClient.SubscribeAsync<TCommand, CorrelationContext>(async (command, correlationContext) =>
                 {
-                    var commandHandler = _serviceProvider.GetService<ICommandHandler<TCommand>>();
+                    try
+                    {
+                        var commandHandler = _serviceProvider.GetService<ICommandHandler<TCommand>>();
 
-                    return await TryHandleAsync(command, correlationContext,
-                        () => commandHandler.HandleAsync(command, correlationContext));
+                        return await TryHandleAsync(command, correlationContext,
+                            () => commandHandler.HandleAsync(command, correlationContext));
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogError($"----Exception---- {e.Message }");
+                        _logger.LogError($"----StackTrace---- {e.StackTrace }");
+                        throw;
+                    }
                 },
                 ctx => ctx.UseSubscribeConfiguration(cfg =>
                     cfg.FromDeclaredQueue(q => q.WithName(GetQueueName<TCommand>(_namespace)))));
@@ -54,29 +62,29 @@ namespace Dominos.Core.Bus
         public IBusSubscriber SubscribeEvent<TEvent>(string _namespace = null) where TEvent : IEvent
         {
             _busClient.SubscribeAsync<TEvent, CorrelationContext>(async (_event, correlationContext) =>
-            {
-                try
                 {
-                    var eventHandler = _serviceProvider.GetService<IEventHandler<TEvent>>();
-                    return await TryHandleAsync(_event, correlationContext,
-                        () => eventHandler.HandleAsync(_event, correlationContext));
-                }
-                catch (Exception e)
-                {
-                    _logger.LogInformation(e.StackTrace);
-                    throw ;
-                }
+                    try
+                    {
+                        var eventHandler = _serviceProvider.GetService<IEventHandler<TEvent>>();
+                        return await TryHandleAsync(_event, correlationContext,
+                            () => eventHandler.HandleAsync(_event, correlationContext));
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogError($"----Exception---- {e.Message }");
+                        _logger.LogError($"----StackTrace---- {e.StackTrace }");
+                        throw;
+                    }
 
-               
-            },
+
+                },
                 ctx => ctx.UseSubscribeConfiguration(cfg =>
                     cfg.FromDeclaredQueue(q => q.WithName(GetQueueName<TEvent>(_namespace)))));
 
             return this;
         }
 
-        private async Task<Acknowledgement> TryHandleAsync<TMessage>(TMessage message,
-            CorrelationContext correlationContext, Func<Task> handle)
+        private async Task<Acknowledgement> TryHandleAsync<TMessage>(TMessage message, CorrelationContext correlationContext, Func<Task> handle)
         {
             var currentRetry = 0;
             var retryPolicy = Policy
@@ -100,11 +108,20 @@ namespace Dominos.Core.Bus
 
         private string GetQueueName<T>(string _namespace = null)
         {
-            _namespace = string.IsNullOrWhiteSpace(_namespace)
-                ? (string.IsNullOrWhiteSpace(_defaultNamespace) ? string.Empty : _defaultNamespace)
-                : _namespace;
-            var separatedNamespace = string.IsNullOrWhiteSpace(_namespace) ? string.Empty : $"{_namespace}.";
-            return $"{Assembly.GetEntryAssembly().GetName().Name}/{separatedNamespace}{typeof(T).Name.Underscore()}";
+            try
+            {
+                _namespace = string.IsNullOrWhiteSpace(_namespace)
+                    ? (string.IsNullOrWhiteSpace(_defaultNamespace) ? string.Empty : _defaultNamespace)
+                    : _namespace;
+                var separatedNamespace = string.IsNullOrWhiteSpace(_namespace) ? string.Empty : $"{_namespace}.";
+                return $"{Assembly.GetEntryAssembly().GetName().Name}/{separatedNamespace}{typeof(T).Name.Underscore()}";
+            }
+            catch (Exception e)
+            {
+                _logger.LogInformation($"Exception {e.Message }");
+                _logger.LogInformation($"StackTrace {e.StackTrace }");
+                throw;
+            }
         }
     }
 }

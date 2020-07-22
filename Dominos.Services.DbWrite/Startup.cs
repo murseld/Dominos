@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using AutoMapper;
 using Dominos.Core.Bus.RabbitMq;
 using Dominos.Core.Extensions;
@@ -12,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using NLog;
 
 namespace Dominos.Services.DbWrite
 {
@@ -36,6 +38,9 @@ namespace Dominos.Services.DbWrite
                 p.UseSqlServer(Configuration.GetConnectionString("DominosDb"));
             });
 
+            //Log Configurations
+            LogManager.LoadConfiguration(String.Concat(Directory.GetCurrentDirectory(), "/nlog.config"));
+
             services.AddTransient<IUnitOfWork, UnitOfWork>();
             services.AddTransient<ILocationRepository, LocationRepository>();
             return services.BuildContainer();
@@ -57,7 +62,6 @@ namespace Dominos.Services.DbWrite
             {
                 endpoints.MapControllers();
             });
-
             app.UseRabbitMq()
                 .SubscribeCommand<CreateLocationCommand>();
             SeedData.Initialize(app.ApplicationServices);

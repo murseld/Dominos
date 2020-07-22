@@ -6,6 +6,8 @@ namespace Dominos.Test
 {
     public class Location
     {
+
+        public Guid commandId { get; set; }
         public double src_long { get; set; }
         public double src_lat { get; set; }
         public double des_long { get; set; }

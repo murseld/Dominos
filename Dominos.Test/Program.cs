@@ -18,16 +18,20 @@ namespace Dominos.Test
             var result=Console.ReadLine();
             if (result=="y")
             {
-                for (int i = 0; i < 10000; i++)
+                for (int i = 0; i < 10; i++)
                 {
-                    var location = new Location()
+                    for (int j = 0; j < 100; j++)
                     {
-                        src_long = GenerateCoordinate(),
-                        src_lat = GenerateCoordinate(),
-                        des_long = GenerateCoordinate(),
-                        des_lat = GenerateCoordinate(),
-                    };
-                    Task task1 = Task.Factory.StartNew(() => SendRequest(location));
+                        var location = new Location()
+                        {
+                            commandId = Guid.NewGuid(),
+                            src_long = GenerateCoordinate(),
+                            src_lat = GenerateCoordinate(),
+                            des_long = GenerateCoordinate(),
+                            des_lat = GenerateCoordinate(),
+                        };
+                        Task task1 = Task.Factory.StartNew(() => SendRequest(location));
+                    }
                 }
             }
             
@@ -42,9 +46,10 @@ namespace Dominos.Test
                 using (var client = new HttpClient())
                 {
                     var json = JsonConvert.SerializeObject(location);
-                    Console.WriteLine(json);
                     var data = new StringContent(json, Encoding.UTF8, "application/json");
-                    var content = client.PostAsync("http://localhost:5000/api/location", data);
+                    var content =await client.PostAsync("http://localhost:5000/api/location", data);
+                    string result = content.Content.ReadAsStringAsync().Result;
+                    Console.WriteLine(result);
                 }
             }
             catch (Exception e)

@@ -1,10 +1,13 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Reflection;
 using Autofac;
 using Dominos.Core.Domain.Messages;
 using Dominos.Core.Domain.MessagesHandlers;
 using Dominos.Core.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using RawRabbit;
 using RawRabbit.Common;
 using RawRabbit.Configuration;

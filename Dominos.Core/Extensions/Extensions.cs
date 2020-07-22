@@ -25,7 +25,7 @@ namespace Dominos.Core.Extensions
         {
             var builder = new ContainerBuilder();
             builder.RegisterAssemblyTypes(Assembly.GetCallingAssembly())
-                .AsImplementedInterfaces().InstancePerRequest();
+                .AsImplementedInterfaces();
             builder.Populate(services);
             builder.AddRabbitMq();
             return new AutofacServiceProvider(builder.Build());

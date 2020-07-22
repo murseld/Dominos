@@ -19,22 +19,20 @@ namespace Dominos.Services.DbWrite.Domain.Handlers
         private readonly ILocationRepository _locationRepository;
         private readonly IUnitOfWork _unitOfWork;
         private IMapper _mapper;
-        private readonly ILogger<IBusPublisher> _logger;
         public CreateLocationHandler(
             ILocationRepository locationRepository, 
             IUnitOfWork unitOfWork, 
             IMapper mapper, 
-            IBusPublisher busPublisher, ILogger<IBusPublisher> logger)
+            IBusPublisher busPublisher
+            )
         {
             _locationRepository = locationRepository;
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _busPublisher = busPublisher;
-            _logger = logger;
         }
         public async Task HandleAsync(CreateLocationCommand command, ICorrelationContext context)
         {
-            _logger.Log(LogLevel.Information, JsonConvert.SerializeObject(command));
             var location = new Location()
             {
                 src_lat = command.src_lat,
